@@ -86,13 +86,13 @@ with st.sidebar:
 
     st.session_state["tenant_id"] = tenant_id.strip()
 
-    k = st.slider(
-        "Sources to retrieve (k)",
-        min_value=1,
-        max_value=20,
-        value=4,
-        help="Number of document chunks retrieved per question.",
-    )
+   # k = st.slider(
+   #      "Sources to retrieve (k)",
+   #      min_value=1,
+   #      max_value=20,
+   #      value=4,
+   #      help="Number of document chunks retrieved per question.",
+   #  )
 
     st.divider()
 
@@ -111,7 +111,7 @@ with st.sidebar:
 # ── Guard: workspace required ──────────────────────────────────────────────────
 
 if not st.session_state.get("tenant_id"):
-    st.info("👈 Enter a **Workspace ID** in the sidebar to get started.")
+    st.info("Enter a **Workspace Name ** in the sidebar to get started.")
     st.stop()
 
 tenant_id = st.session_state["tenant_id"]
@@ -246,7 +246,10 @@ with chat_tab:
                 r, err = _api(
                     "POST",
                     "/chat",
-                    json={"tenant_id": tenant_id, "question": question, "k": k},
+                    json={
+                        "tenant_id": tenant_id,
+                        "question": question
+                    },
                 )
 
             if err:

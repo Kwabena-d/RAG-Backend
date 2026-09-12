@@ -15,7 +15,7 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 @router.post("", response_model=ChatResponse)
 def chat(body: ChatRequest):
     try:
-        chain = build_rag_chain(body.tenant_id, k=body.k)
+        chain = build_rag_chain(body.tenant_id, body.question)
         answer, source_docs = ask(chain, body.question)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

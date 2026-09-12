@@ -49,7 +49,6 @@ class IngestDatabaseResponse(BaseModel):
 class ChatRequest(BaseModel):
     tenant_id: str
     question: str
-    k: Optional[int] = 4
 
     @field_validator("tenant_id")
     @classmethod
