@@ -8,10 +8,16 @@ Run with:
 """
 
 import requests
+import os
 import streamlit as st
-
 # Locally falls back to localhost; on Streamlit Cloud set this secret.
-API_BASE = st.secrets.get("API_BASE", "http://localhost:8000")
+API_BASE = os.getenv("API_BASE")
+
+if not API_BASE:
+    try:
+        API_BASE = st.secrets["API_BASE"]
+    except Exception:
+        API_BASE = "http://localhost:8000"
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
