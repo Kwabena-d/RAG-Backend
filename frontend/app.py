@@ -57,7 +57,7 @@ def _render_sources(sources: list) -> None:
 # ── Page config ────────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="RAG Assistant",
+    page_title="SkadVault AI",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -66,7 +66,7 @@ st.set_page_config(
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.title("RAG Assistant")
+    st.title("SkadVault AI")
     st.caption("Chat with your own documents.")
 
     st.divider()
