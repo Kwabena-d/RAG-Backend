@@ -78,11 +78,12 @@ with st.sidebar:
     st.divider()
 
     tenant_id = st.text_input(
-        "Workspace ID",
+        label="Workspace Name",
         value=st.session_state.get("tenant_id", ""),
-        placeholder="e.g. acme-corp",
-        help="All uploads and conversations are scoped to this ID.",
+        placeholder="e.g. My Company",
+        help="Choose a name for your document workspace.",
     )
+
     st.session_state["tenant_id"] = tenant_id.strip()
 
     k = st.slider(
@@ -117,7 +118,7 @@ tenant_id = st.session_state["tenant_id"]
 
 # ── Main tabs ──────────────────────────────────────────────────────────────────
 
-ingest_tab, chat_tab = st.tabs(["📂 Ingest Documents", "💬 Chat"])
+ingest_tab, chat_tab = st.tabs(["📂 Add Documents", "💬 Chat"])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # INGEST TAB
