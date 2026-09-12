@@ -94,13 +94,13 @@ with st.sidebar:
    #      help="Number of document chunks retrieved per question.",
    #  )
 
-    st.divider()
+    # st.divider()
 
-    r_health, _ = _api("GET", "/health")
-    if r_health and r_health.status_code == 200:
-        st.success("API online")
-    else:
-        st.error("API offline")
+    # r_health, _ = _api("GET", "/health")
+    # if r_health and r_health.status_code == 200:
+    #     st.success("API online")
+    # else:
+    #     st.error("API offline")
 
     st.divider()
 
