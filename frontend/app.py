@@ -25,7 +25,7 @@ if not API_BASE:
 def _api(method: str, path: str, **kwargs):
     """Call the API. Returns (response, None) or (None, error_message)."""
     try:
-        r = requests.request(method, f"{API_BASE}{path}", timeout=120, **kwargs)
+        r = requests.request(method, f"{API_BASE}{path}", timeout=300, **kwargs)
         return r, None
     except requests.exceptions.ConnectionError:
         return None, "Cannot reach the API — is uvicorn running on port 8000?"
