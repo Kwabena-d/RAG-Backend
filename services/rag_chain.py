@@ -5,8 +5,9 @@ Builds the RAG pipeline on top of the pgvector store:
   pgvector retriever → prompt + retrieved context → Claude → answer
 
 Public API:
-    build_rag_chain(tenant_id, k)   — create the chain for a tenant
-    ask(chain, question)            — run a question, return (answer, sources)
+    build_rag_chain(tenant_id, question)              — create a full-tenant chain
+    build_rag_chain_scoped(tenant_id, question, doc_ids) — chain filtered to specific docs
+    ask(chain, question)                              — run a question, return (answer, sources)
 """
 
 from langchain_anthropic import ChatAnthropic
@@ -80,3 +81,31 @@ def ask(chain, question: str) -> tuple[str, list]:
     """Run a question through the chain. Returns (answer, source_documents)."""
     result = chain.invoke({"input": question})
     return result["answer"], result.get("context", [])
+
+
+def build_rag_chain_scoped(
+    tenant_id: str,
+    question: str,
+    doc_ids: list[str],
+    model_name: str = CLAUDE_MODEL,
+):
+    """Build RAG chain filtered to specific document IDs."""
+    k = choose_k(question)
+    store = get_store(tenant_id)
+
+    if doc_ids:
+        filt = {"doc_id": {"$in": list(doc_ids)}}
+    else:
+        # Conversation has no attached documents — use sentinel that matches nothing
+        filt = {"doc_id": {"$in": ["__no_documents__"]}}
+
+    retriever = store.as_retriever(
+        search_kwargs={"k": k, "filter": filt}
+    )
+    llm = ChatAnthropic(model=model_name, temperature=0)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", SYSTEM_PROMPT),
+        ("human", "{input}"),
+    ])
+    combine_docs_chain = create_stuff_documents_chain(llm, prompt)
+    return create_retrieval_chain(retriever, combine_docs_chain)

@@ -21,12 +21,15 @@ class IngestFileResponse(BaseModel):
     filename: str
     chunks_stored: int
     source_type: str
+    doc_id: str = ""
+    already_existed: bool = False
 
 
 class IngestDatabaseRequest(BaseModel):
     tenant_id: str
     connection_string: str
     max_rows_per_table: Optional[int] = 500
+    conversation_id: Optional[str] = None
 
     @field_validator("tenant_id")
     @classmethod
@@ -44,11 +47,13 @@ class IngestDatabaseRequest(BaseModel):
 class IngestDatabaseResponse(BaseModel):
     tenant_id: str
     chunks_stored: int
+    doc_id: str = ""
 
 
 class ChatRequest(BaseModel):
     tenant_id: str
     question: str
+    conversation_id: Optional[str] = None
 
     @field_validator("tenant_id")
     @classmethod
@@ -75,3 +80,36 @@ class ChatResponse(BaseModel):
     question: str
     answer: str
     sources: list[SourceChunk]
+
+
+class ConversationCreate(BaseModel):
+    tenant_id: str
+    title: str
+
+    @field_validator("tenant_id")
+    @classmethod
+    def validate_tenant_id(cls, v: str) -> str:
+        return _check_tenant_id(v)
+
+
+class ConversationListItem(BaseModel):
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+
+
+class MessageModel(BaseModel):
+    role: str
+    content: str
+    sources: list = []
+
+
+class ConversationResponse(BaseModel):
+    id: str
+    tenant_id: str
+    title: str
+    created_at: str
+    updated_at: str
+    messages: list[MessageModel] = []
+    documents: list[dict] = []

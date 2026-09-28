@@ -18,13 +18,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from core.database import init_db
-from routers import ingest, chat
+from core.database import init_db, init_conversation_tables
+from routers import ingest, chat, conversations
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    init_conversation_tables()
     yield
 
 
@@ -44,6 +45,7 @@ app.add_middleware(
 
 app.include_router(ingest.router)
 app.include_router(chat.router)
+app.include_router(conversations.router)
 
 
 @app.get("/health")
