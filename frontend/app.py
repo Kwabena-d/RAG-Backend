@@ -131,7 +131,10 @@ with ingest_tab:
 
     # ── File upload ──────────────────────────────────────────────────────────
     with file_sub:
-        st.write("Upload a file to chunk, embed, and store it in your workspace.")
+        st.write(
+            "Upload documents, spreadsheets, text files, or images "
+            "to add them to your workspace."
+        )
 
         uploaded = st.file_uploader(
             "Supported formats: PDF, DOCX, CSV, XLSX, XLS, TXT, MD, JSON, JPG, PNG, GIF, WEBP, BMP, TIFF",
