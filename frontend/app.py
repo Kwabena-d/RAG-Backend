@@ -125,7 +125,6 @@ def _init_state() -> None:
         "export_filename": "",
         "export_mime": "",
         "export_msg_count": 0,
-        "show_attach": False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -441,185 +440,122 @@ if any(m["role"] == "assistant" for m in st.session_state["conv_messages"]):
             )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Attachment section (compact, integrated)
+# Attachment chips — compact status row above the composer
 # ─────────────────────────────────────────────────────────────────────────────
 
 conv_docs = st.session_state.get("conv_docs", [])
 if conv_docs:
-    chip_parts = [f"{_icon(d['filename'])} {d['filename']}" for d in conv_docs]
-    st.caption("  ·  ".join(chip_parts))
-
-if st.button("＋  Add files or connect database", key="attach_toggle"):
-    st.session_state["show_attach"] = not st.session_state.get("show_attach", False)
-
-if st.session_state.get("show_attach", False):
-    with st.container():
-        tab_files, tab_db = st.tabs(["Files & Images", "Database"])
-
-        with tab_files:
-            current_conv_id = st.session_state.get("current_conv_id")
-            uploader_key = f"uploader_{current_conv_id or 'new'}"
-            uploaded = st.file_uploader(
-                "PDF, DOCX, CSV, XLSX, XLS, TXT, MD, JSON · Images: JPG, PNG, GIF, WEBP, BMP, TIFF",
-                type=SUPPORTED_TYPES,
-                label_visibility="visible",
-                key=uploader_key,
-            )
-
-            if uploaded:
-                file_bytes = uploaded.getvalue()
-                doc_id = hashlib.md5(file_bytes).hexdigest()
-                ext = uploaded.name.rsplit(".", 1)[-1].lower() if "." in uploaded.name else ""
-                icon = _icon(uploaded.name)
-                size_lbl = _size_label(uploaded.size)
-
-                conv_doc_ids = {d["doc_id"] for d in conv_docs}
-
-                if doc_id in conv_doc_ids:
-                    st.success(f"✓ Already in this conversation")
-                elif doc_id in st.session_state["processed_doc_ids"]:
-                    st.success(f"✓ Ready")
-                else:
-                    # Auto-process new file
-                    st.info(f"{icon} {uploaded.name} · {size_lbl}")
-                    if ext in IMAGE_EXTS:
-                        try:
-                            st.image(file_bytes, width=200)
-                        except Exception:
-                            pass
-
-                    # Create conversation if needed
-                    if not st.session_state.get("current_conv_id"):
-                        new_id = _create_conversation(tenant_id, uploaded.name[:50])
-                        if not new_id:
-                            st.error("Could not start a conversation. Please try again.")
-                            st.stop()
-                        st.session_state["current_conv_id"] = new_id
-                        current_conv_id = new_id
-
-                    with st.spinner(f"Processing {uploaded.name}…"):
-                        r, err = _api(
-                            "POST", "/ingest/file",
-                            data={
-                                "tenant_id": tenant_id,
-                                "conversation_id": st.session_state["current_conv_id"],
-                            },
-                            files={
-                                "file": (
-                                    uploaded.name,
-                                    file_bytes,
-                                    uploaded.type or "application/octet-stream",
-                                )
-                            },
-                        )
-
-                    if err:
-                        st.error(f"SkadVault AI couldn't process this file. {err}")
-                    else:
-                        body, api_err = _parse_json(r)
-                        if api_err:
-                            st.error(f"Upload failed. {api_err}")
-                        else:
-                            returned_doc_id = body.get("doc_id", doc_id)
-                            st.session_state["processed_doc_ids"].add(returned_doc_id)
-                            _load_conversation(st.session_state["current_conv_id"], tenant_id)
-                            st.session_state["show_attach"] = False
-                            st.rerun()
-
-        with tab_db:
-            conn_str_tab = st.text_input(
-                "Connection string",
-                placeholder="postgresql://user:pass@host:5432/db",
-                type="password",
-                key="db_conn_str_tab",
-            )
-            max_rows_tab = st.number_input(
-                "Max rows per table",
-                min_value=1, max_value=100_000, value=500, step=100,
-                key="db_max_rows_tab",
-            )
-            if st.button("Connect & Index", type="primary", use_container_width=True, key="db_connect_tab"):
-                if not conn_str_tab.strip():
-                    st.error("Enter a connection string.")
-                else:
-                    current_conv_id_tab = st.session_state.get("current_conv_id")
-                    if not current_conv_id_tab:
-                        new_id = _create_conversation(tenant_id, "Database Connection")
-                        if new_id:
-                            st.session_state["current_conv_id"] = new_id
-                            current_conv_id_tab = new_id
-                        else:
-                            st.error("Could not create a conversation. Please try again.")
-                            current_conv_id_tab = None
-
-                    if current_conv_id_tab:
-                        with st.spinner("Connecting…"):
-                            r, err = _api(
-                                "POST", "/ingest/database",
-                                json={
-                                    "tenant_id": tenant_id,
-                                    "connection_string": conn_str_tab,
-                                    "max_rows_per_table": int(max_rows_tab),
-                                    "conversation_id": current_conv_id_tab,
-                                },
-                            )
-                        if err:
-                            st.error(err)
-                        else:
-                            body, api_err = _parse_json(r)
-                            if api_err:
-                                st.error(api_err)
-                            else:
-                                st.success(f"Done — {body.get('chunks_stored', '?')} chunks indexed.")
-                                _load_conversation(current_conv_id_tab, tenant_id)
-                                st.session_state["show_attach"] = False
-                                st.rerun()
+    chips_html = " &nbsp; ".join(
+        f'<span style="background:#f0f2f6;border-radius:999px;padding:3px 12px;'
+        f'font-size:0.82em;white-space:nowrap">'
+        f'{_icon(d["filename"])} {d["filename"]} ✓</span>'
+        for d in conv_docs
+    )
+    st.markdown(f'<div style="margin-bottom:4px">{chips_html}</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Chat input
+# Unified composer — native file attachment built into the chat input
+# The + button is provided by Streamlit 1.44+ natively via accept_file.
 # ─────────────────────────────────────────────────────────────────────────────
 
-question = st.chat_input("Ask about your files…")
+submission = st.chat_input(
+    "Ask about your files…",
+    accept_file="multiple",
+    file_type=SUPPORTED_TYPES,
+)
 
-if question:
-    # Create conversation if needed
-    if not st.session_state.get("current_conv_id"):
-        new_id = _create_conversation(tenant_id, question[:50])
-        if not new_id:
-            st.error("Could not start conversation. Please try again.")
-            st.stop()
-        st.session_state["current_conv_id"] = new_id
+if submission is not None:
+    files = submission.files   # list[UploadedFile], empty when only text sent
+    text = submission.text.strip()
 
-    current_conv_id = st.session_state["current_conv_id"]
+    # ── Ingest any attached files ────────────────────────────────────────────
+    any_new_file = False
+    for uploaded in files:
+        file_bytes = uploaded.getvalue()
+        doc_id = hashlib.md5(file_bytes).hexdigest()
+        icon = _icon(uploaded.name)
 
-    # Add user message to local state
-    st.session_state["conv_messages"].append({"role": "user", "content": question, "sources": []})
+        conv_doc_ids = {d["doc_id"] for d in st.session_state["conv_docs"]}
+        if doc_id in conv_doc_ids or doc_id in st.session_state["processed_doc_ids"]:
+            continue  # already ingested — no duplicate
 
-    with st.chat_message("user"):
-        st.markdown(question)
+        # Lazy conversation creation on first attachment
+        if not st.session_state.get("current_conv_id"):
+            new_id = _create_conversation(tenant_id, uploaded.name[:50])
+            if not new_id:
+                st.error("Could not start a conversation. Please try again.")
+                continue
+            st.session_state["current_conv_id"] = new_id
 
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking…"):
-            r, err = _api("POST", "/chat", json={
-                "tenant_id": tenant_id,
-                "question": question,
-                "conversation_id": current_conv_id,
-            })
+        with st.spinner(f"Processing {icon} {uploaded.name}…"):
+            r, err = _api(
+                "POST", "/ingest/file",
+                data={
+                    "tenant_id": tenant_id,
+                    "conversation_id": st.session_state["current_conv_id"],
+                },
+                files={
+                    "file": (uploaded.name, file_bytes, uploaded.type or "application/octet-stream")
+                },
+            )
 
         if err:
-            msg = f"Service temporarily unavailable. {err}"
-            st.error(msg)
-            st.session_state["conv_messages"].append({"role": "assistant", "content": msg, "sources": []})
+            st.error(f"Could not process {uploaded.name}. {err}")
         else:
             body, api_err = _parse_json(r)
             if api_err:
-                st.error(api_err)
-                st.session_state["conv_messages"].append({"role": "assistant", "content": api_err, "sources": []})
+                st.error(f"Upload failed for {uploaded.name}. {api_err}")
             else:
-                answer = body.get("answer", "")
-                sources = body.get("sources", [])
-                st.markdown(answer)
-                _render_sources(sources)
-                st.session_state["conv_messages"].append({"role": "assistant", "content": answer, "sources": sources})
+                returned_doc_id = body.get("doc_id", doc_id)
+                st.session_state["processed_doc_ids"].add(returned_doc_id)
+                _load_conversation(st.session_state["current_conv_id"], tenant_id)
+                any_new_file = True
+
+    # Files-only submission: rerun to refresh chips and sidebar
+    if files and not text:
+        if any_new_file:
+            st.session_state["refresh_conv_list"] = True
+        st.rerun()
+
+    # ── RAG query ────────────────────────────────────────────────────────────
+    if text:
+        # Lazy conversation creation on first message
+        if not st.session_state.get("current_conv_id"):
+            new_id = _create_conversation(tenant_id, text[:50])
+            if not new_id:
+                st.error("Could not start conversation. Please try again.")
+                st.stop()
+            st.session_state["current_conv_id"] = new_id
+
+        current_conv_id = st.session_state["current_conv_id"]
+
+        st.session_state["conv_messages"].append({"role": "user", "content": text, "sources": []})
+
+        with st.chat_message("user"):
+            st.markdown(text)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking…"):
+                r, err = _api("POST", "/chat", json={
+                    "tenant_id": tenant_id,
+                    "question": text,
+                    "conversation_id": current_conv_id,
+                })
+
+            if err:
+                msg = f"Service temporarily unavailable. {err}"
+                st.error(msg)
+                st.session_state["conv_messages"].append({"role": "assistant", "content": msg, "sources": []})
+            else:
+                body, api_err = _parse_json(r)
+                if api_err:
+                    st.error(api_err)
+                    st.session_state["conv_messages"].append({"role": "assistant", "content": api_err, "sources": []})
+                else:
+                    answer = body.get("answer", "")
+                    sources = body.get("sources", [])
+                    st.markdown(answer)
+                    _render_sources(sources)
+                    st.session_state["conv_messages"].append({"role": "assistant", "content": answer, "sources": sources})
 
         st.session_state["refresh_conv_list"] = True
