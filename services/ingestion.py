@@ -1,12 +1,16 @@
 """
 services/ingestion.py
 
-Loads documents from PDF, DOCX, CSV, Excel, or a SQL database and splits
-them into chunks ready for embedding. Ported directly from document_loaders.py
-and vector_store.py in the original Streamlit app.
+Loads files from PDF, DOCX, CSV, Excel, plain text, JSON, images, or a SQL
+database and splits them into chunks ready for embedding.
 """
 
+import base64
+import io
+import json as json_lib
+from pathlib import Path
 from typing import List
+
 import pandas as pd
 from langchain_core.documents import Document
 from langchain_community.document_loaders import Docx2txtLoader, PyPDFLoader
@@ -64,6 +68,76 @@ def load_excel(file_path: str) -> List[Document]:
     return docs
 
 
+def load_text(file_path: str) -> List[Document]:
+    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        content = f.read()
+    return [Document(page_content=content, metadata={"source_type": "text"})]
+
+
+def load_json(file_path: str) -> List[Document]:
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json_lib.load(f)
+    content = json_lib.dumps(data, indent=2, ensure_ascii=False)
+    return [Document(page_content=content, metadata={"source_type": "json"})]
+
+
+def load_image(file_path: str) -> List[Document]:
+    from anthropic import Anthropic
+    from PIL import Image
+
+    client = Anthropic()
+    ext = Path(file_path).suffix.lower()
+
+    # Anthropic Vision supports jpeg/png/gif/webp — convert others to PNG first
+    if ext in (".bmp", ".tiff", ".tif"):
+        img = Image.open(file_path)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        image_data = base64.standard_b64encode(buf.getvalue()).decode("utf-8")
+        media_type = "image/png"
+    else:
+        with open(file_path, "rb") as f:
+            image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+        media_type = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+        }.get(ext, "image/png")
+
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=4096,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": image_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Extract and describe all content from this image in detail. "
+                            "Transcribe any visible text verbatim. Describe charts, tables, "
+                            "diagrams, and other visual elements with their data."
+                        ),
+                    },
+                ],
+            }
+        ],
+    )
+
+    content = message.content[0].text
+    return [Document(page_content=content, metadata={"source_type": "image"})]
+
+
 def load_database(connection_string: str, max_rows_per_table: int = 500) -> List[Document]:
     engine = create_engine(connection_string)
     inspector = inspect(engine)
@@ -94,6 +168,9 @@ def load_source(source_type: str, source: str) -> List[Document]:
         "docx":     load_docx,
         "csv":      load_csv,
         "excel":    load_excel,
+        "text":     load_text,
+        "json":     load_json,
+        "image":    load_image,
         "database": load_database,
     }
     if source_type not in dispatch:

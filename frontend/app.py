@@ -73,7 +73,7 @@ st.set_page_config(
 
 with st.sidebar:
     st.title("SkadVault AI")
-    st.caption("Chat with your own documents.")
+    st.caption("Chat with your own files.")
 
     st.divider()
 
@@ -81,7 +81,7 @@ with st.sidebar:
         label="Workspace Name",
         value=st.session_state.get("tenant_id", ""),
         placeholder="e.g. My Company",
-        help="Choose a name for your document workspace.",
+        help="Choose a name for your workspace.",
     )
 
     st.session_state["tenant_id"] = tenant_id.strip()
@@ -118,7 +118,7 @@ tenant_id = st.session_state["tenant_id"]
 
 # ── Main tabs ──────────────────────────────────────────────────────────────────
 
-ingest_tab, chat_tab = st.tabs(["📂 Add Documents", "💬 Chat"])
+ingest_tab, chat_tab = st.tabs(["📂 Add Files", "💬 Chat"])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # INGEST TAB
@@ -134,8 +134,9 @@ with ingest_tab:
         st.write("Upload a file to chunk, embed, and store it in your workspace.")
 
         uploaded = st.file_uploader(
-            "Supported formats: PDF, DOCX, CSV, XLSX, XLS",
-            type=["pdf", "docx", "csv", "xlsx", "xls"],
+            "Supported formats: PDF, DOCX, CSV, XLSX, XLS, TXT, MD, JSON, JPG, PNG, GIF, WEBP, BMP, TIFF",
+            type=["pdf", "docx", "csv", "xlsx", "xls", "txt", "md", "json",
+                  "jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "tif"],
             label_visibility="visible",
         )
 
@@ -234,7 +235,7 @@ with chat_tab:
                 _render_sources(msg.get("sources", []))
 
     # Input
-    question = st.chat_input("Ask a question about your documents…")
+    question = st.chat_input("Ask a question about your files…")
 
     if question:
         st.session_state["messages"].append({"role": "user", "content": question})

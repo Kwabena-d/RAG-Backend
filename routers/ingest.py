@@ -1,9 +1,9 @@
 """
 routers/ingest.py
 
-Endpoints for ingesting documents into a tenant's vector store.
+Endpoints for ingesting files into a tenant's vector store.
 
-POST /ingest/file     — upload a PDF, DOCX, CSV, or Excel file
+POST /ingest/file     — upload a PDF, DOCX, CSV, Excel, text, JSON, or image file
 POST /ingest/database — connect to a SQL database and index its rows
 """
 
@@ -29,6 +29,17 @@ EXTENSION_TO_SOURCE_TYPE = {
     ".csv":  "csv",
     ".xlsx": "excel",
     ".xls":  "excel",
+    ".txt":  "text",
+    ".md":   "text",
+    ".json": "json",
+    ".jpg":  "image",
+    ".jpeg": "image",
+    ".png":  "image",
+    ".gif":  "image",
+    ".webp": "image",
+    ".bmp":  "image",
+    ".tiff": "image",
+    ".tif":  "image",
 }
 
 
@@ -54,7 +65,7 @@ async def ingest_file(
     if not source_type:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type '{ext}'. Allowed: pdf, docx, csv, xlsx, xls",
+            detail=f"Unsupported file type '{ext}'. Allowed: pdf, docx, csv, xlsx, xls, txt, md, json, jpg, jpeg, png, gif, webp, bmp, tiff",
         )
 
     content = await file.read()
